@@ -117,6 +117,7 @@ def score_script(*, brief: str, script: str, settings: Settings, llm: LLM,
             "weights_applied": applied_weights,
             "overall_feedback": narrative["feedback"],
             "top_actions": narrative["top_actions"],
+            "feedback_warnings": narrative.get("feedback_warnings", []),
             "brief_alignment": brief_result,
             "message_quality": message_result,
             "claim_validity": {

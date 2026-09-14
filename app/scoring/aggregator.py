@@ -86,6 +86,30 @@ def _format_bullets(title: str, items: list[Any]) -> str:
     return f"{title}:\n" + "\n".join(rendered)
 
 
+def audit_feedback(text: str, verdicts: list[Verdict]) -> list[str]:
+    """Check the narrative against the verdicts it was given.
+
+    The prompt forbids describing an unverifiable claim as contradicted, but an
+    instruction is not an enforcement, and the distinction is the entire basis of
+    the penalty table: "the manuals say otherwise" and "the manuals are silent"
+    are different findings that a brand team would act on differently. Rather
+    than silently rewriting the model's prose, flag the mismatch so it surfaces
+    in the run artifact and the logs.
+    """
+    warnings: list[str] = []
+    lowered = text.lower()
+    has = {v.verdict for v in verdicts}
+
+    if "contradict" in lowered and "contradicted" not in has:
+        warnings.append(
+            "narrative says a claim contradicts the manuals, but no claim was "
+            "verdicted 'contradicted' -- unverifiable means the manuals are "
+            "silent, not that the claim is false")
+    if "disproven" in lowered and "contradicted" not in has:
+        warnings.append("narrative says a claim was disproven, but none was contradicted")
+    return warnings
+
+
 def write_feedback(llm: LLM, *, scores: dict[str, Any], verdict: str,
                    verdicts: list[Verdict], brief_result: dict[str, Any],
                    message_result: dict[str, Any]) -> dict[str, Any]:
@@ -118,5 +142,13 @@ def write_feedback(llm: LLM, *, scores: dict[str, Any], verdict: str,
         schema_hint=f"{FEEDBACK_SCHEMA}\n\n{JSON_ONLY}",
         stage="overall_feedback",
     )
-    return {"feedback": str(raw.get("feedback") or "").strip(),
-            "top_actions": [str(a) for a in (raw.get("top_actions") or [])]}
+    feedback = str(raw.get("feedback") or "").strip()
+    actions = [str(a) for a in (raw.get("top_actions") or [])]
+
+    warnings = audit_feedback(" ".join([feedback, *actions]), verdicts)
+    if warnings:
+        log.warning("feedback narrative misstates claim verdicts",
+                    extra={"warnings": warnings})
+
+    return {"feedback": feedback, "top_actions": actions,
+            "feedback_warnings": warnings}

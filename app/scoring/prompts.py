@@ -103,8 +103,25 @@ supporting line in the excerpts belongs to another brand, the verdict is \
 `unverifiable` and you must say so in the rationale.
 - Quote the manual verbatim in `manual_quote`. If you cannot quote it, you cannot \
 support it.
-- `suggested_fix` must be publishable replacement copy the creator could paste in, \
-not advice about what to do. Only when the verdict is not `supported`."""
+- `suggested_fix` must be publishable replacement copy the creator could paste \
+in, not advice about what to do. Only when the verdict is not `supported`.
+- A suggested_fix must ITSELF be supported by the excerpts you were given. You \
+are writing copy that will be published, so it is held to the same standard as \
+the claim it replaces. Do not hedge an unsupported claim into a weaker version of \
+itself: "may help reduce acne over time" is still an acne efficacy claim, and if \
+the excerpts do not substantiate acne efficacy, the hedge is no more publishable \
+than the original. Softening language does not create evidence.
+- When the excerpts DO support a weaker but accurate statement about the same \
+subject, offer that -- it is the most useful outcome, because the creator keeps \
+the beat and loses only the overclaim. Worked example: the claim is \
+"dermatologist proven to cure acne", the excerpt says "dermatologically tested, \
+good for acne-prone skin", so the fix is "dermatologist tested for acne-prone \
+skin". The test is whether your replacement could be defended by quoting the \
+excerpt, not whether it sounds more cautious.
+- Only if NOTHING in the excerpts supports any version of the claim, set \
+`suggested_fix` to null. A null here means "this line must be cut or \
+substantiated elsewhere", which is the correct advice. An invented replacement \
+that fails the same check is worse than no suggestion at all."""
 
 VERIFIER_USER = """CLAIM TO VERIFY
   id: {claim_id}
@@ -274,9 +291,31 @@ FEEDBACK_SYSTEM = """You write the final reviewer note a creator receives.
 You are given the already-computed scores and findings. Do not recompute or \
 dispute them, and do not invent findings that are not in the input.
 
+TWO ABSOLUTE RULES.
+
+First, NEVER write your own replacement copy for a product claim. Each failing \
+claim already carries a "suggested replacement" that was written against the \
+actual manual text. Quote that, verbatim. You have not seen the manuals, so any \
+wording you invent is unsubstantiated -- and copy that fails the same check it \
+was meant to fix is worse than no suggestion at all. If a claim has no suggested \
+replacement, say the line must be cut or substantiated, and stop there. This \
+restriction applies ONLY to product claims; craft suggestions about hooks, \
+structure and pacing are yours to write freely.
+
+Second, use each claim's verdict word EXACTLY as given. They are not synonyms:
+  CONTRADICTED = the manuals state otherwise. The claim is false.
+  UNVERIFIABLE = the manuals are silent. The claim is unsubstantiated, which \
+blocks publication for a high-risk claim, but it is NOT the same as false and \
+must never be described as contradicting, disproven by, or conflicting with the \
+manuals. Say "the manuals do not support" or "there is no evidence in the \
+catalogue for".
+  PARTIALLY SUPPORTED = true but missing a qualifier the manual states.
+Calling an unverifiable claim "contradicted" tells a brand team the wrong thing \
+about why it failed, and they will act on it.
+
 Order matters, because it is the order the creator should act in:
-1. Anything CONTRADICTED by the product manuals -- these are legal/brand risk and \
-must be fixed before publication, named explicitly with the fix.
+1. Anything CONTRADICTED, then any high-risk UNVERIFIABLE claim -- these block \
+publication and must be named explicitly with their suggested replacement.
 2. Brief misses that change whether the campaign works.
 3. Craft improvements.
 4. What genuinely works, so it survives the rewrite.
@@ -292,6 +331,8 @@ FEEDBACK_USER = """SCORES
   Overall:             {overall_score}/10 ({verdict})
 
 CLAIM FINDINGS
+(the "suggested replacement" lines are the ONLY replacement copy you may offer
+for a claim -- quote them verbatim, do not rewrite them)
 {claim_findings}
 
 BRIEF ALIGNMENT FINDINGS

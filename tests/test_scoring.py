@@ -268,3 +268,43 @@ def test_transient_provider_errors_are_retried():
 
     assert with_retries(flaky, stage="test", base_delay=0.001) == "ok"
     assert calls["n"] == 3
+
+
+def test_feedback_audit_flags_contradiction_language_with_no_contradiction():
+    # "the manuals are silent" and "the manuals say otherwise" are different
+    # findings; conflating them tells a brand team the wrong thing.
+    from app.scoring.aggregator import audit_feedback
+    warnings = audit_feedback(
+        "Remove the medical claims that contradict the product manuals.",
+        [_verdict("unverifiable", "high")])
+    assert warnings and "silent" in warnings[0]
+
+
+def test_feedback_audit_is_silent_when_a_claim_really_was_contradicted():
+    from app.scoring.aggregator import audit_feedback
+    assert audit_feedback("This contradicts the manual.",
+                          [_verdict("contradicted", "high")]) == []
+
+
+def test_feedback_audit_passes_clean_wording():
+    from app.scoring.aggregator import audit_feedback
+    assert audit_feedback("The manuals do not support this claim.",
+                          [_verdict("unverifiable", "high")]) == []
+
+
+def test_feedback_prompt_forbids_inventing_replacement_copy():
+    # The feedback writer never sees the manuals, so any replacement copy it
+    # invents is unsubstantiated -- and may fail the same check it was fixing.
+    from app.scoring.prompts import FEEDBACK_SYSTEM
+    lowered = FEEDBACK_SYSTEM.lower()
+    assert "never write your own replacement copy" in lowered
+    assert "verbatim" in lowered
+
+
+def test_verifier_prompt_requires_grounded_replacement_copy():
+    # A hedged version of an unsupported claim is still unsupported; softening
+    # language does not create evidence.
+    from app.scoring.prompts import VERIFIER_SYSTEM
+    lowered = VERIFIER_SYSTEM.lower()
+    assert "itself be supported by the excerpts" in lowered
+    assert "null" in lowered
