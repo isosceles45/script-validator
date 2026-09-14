@@ -128,3 +128,10 @@ def test_missing_golden_set_is_reported_not_scored_as_zero(settings, store, popu
     result = golden.run_per_request(settings, populated, store)
     assert result["status"] == "no_golden_set"
     assert result["recall_at_k"] is None
+
+
+def test_dimension_mismatch_fails_loudly(settings, store, populated):
+    # Switching PROVIDER without re-ingesting must not silently score claims
+    # against randomly-selected manual text.
+    with pytest.raises(ValueError, match="dimension mismatch"):
+        store.search("tea tree", [0.1] * 99, top_k=3)

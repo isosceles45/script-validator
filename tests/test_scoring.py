@@ -238,3 +238,33 @@ def test_high_risk_unverifiable_is_near_fatal_to_the_claim_score():
     # Still strictly better than an outright contradiction: the manual refuting a
     # claim is worse than the manual being silent on it.
     assert score > claim_validity_score([_verdict("contradicted", "high")])
+
+
+def test_permanent_provider_errors_are_not_retried():
+    # A retired model name must fail fast, not burn four backoff rounds per file.
+    from app.providers.base import ProviderError, with_retries
+
+    calls = {"n": 0}
+
+    def explode():
+        calls["n"] += 1
+        raise RuntimeError("404 NOT_FOUND. models/text-embedding-004 is not found")
+
+    with pytest.raises(ProviderError, match="rejected the call"):
+        with_retries(explode, stage="test")
+    assert calls["n"] == 1
+
+
+def test_transient_provider_errors_are_retried():
+    from app.providers.base import with_retries
+
+    calls = {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("503 Service Unavailable")
+        return "ok"
+
+    assert with_retries(flaky, stage="test", base_delay=0.001) == "ok"
+    assert calls["n"] == 3

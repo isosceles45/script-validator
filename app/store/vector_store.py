@@ -140,6 +140,10 @@ class VectorStore:
         return {"n_manuals": len(manuals), "n_chunks": n_chunks,
                 "manuals": [dict(m) for m in manuals]}
 
+    def embed_models(self) -> list[str]:
+        return [r["embed_model"] for r in self._conn.execute(
+            "SELECT DISTINCT embed_model FROM manuals ORDER BY embed_model")]
+
     def products(self) -> list[str]:
         return [r["product"] for r in
                 self._conn.execute("SELECT DISTINCT product FROM chunks ORDER BY product")]
@@ -212,6 +216,17 @@ class VectorStore:
             candidate_idx = np.arange(len(rows), dtype=np.int64)
 
         q = np.asarray(query_embedding, dtype=np.float32)
+        if q.shape[0] != matrix.shape[1]:
+            # Switching PROVIDER without re-ingesting is the likely cause. Fail
+            # loudly: a dimension mismatch that happened to line up would produce
+            # confident nonsense, and every claim verdict downstream would be
+            # grounded in randomly-selected manual text.
+            raise ValueError(
+                f"embedding dimension mismatch: query is {q.shape[0]}-d but the "
+                f"corpus was indexed at {matrix.shape[1]}-d by "
+                f"{', '.join(self.embed_models())}. Re-ingest with the current "
+                f"provider (`python -m app.cli ingest --force`) or point DB_PATH "
+                f"at the store built for it.")
         q = q / max(float(np.linalg.norm(q)), 1e-9)
         dense = matrix[candidate_idx] @ q
         lexical = self._bm25(query, token_docs, candidate_idx)

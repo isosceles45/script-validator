@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     gemini_llm_model: str = "gemini-2.0-flash"
-    gemini_embed_model: str = "text-embedding-004"
+    gemini_embed_model: str = "gemini-embedding-001"
 
     data_dir: Path = Path("./data")
     db_path: Path = Path("./data/store.sqlite3")

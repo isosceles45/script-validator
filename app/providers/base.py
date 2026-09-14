@@ -79,15 +79,41 @@ def parse_json(raw: str) -> Any:
     raise ProviderError(f"model did not return parseable JSON: {raw[:400]!r}")
 
 
+# Client errors that will never succeed on retry: a bad key, a revoked model, a
+# malformed request. 429 is excluded -- rate limiting IS transient and is the
+# main reason this wrapper exists.
+_PERMANENT_STATUS = (400, 401, 403, 404, 405, 422)
+
+
+def is_permanent(exc: Exception) -> bool:
+    """Provider SDKs surface HTTP status differently (openai sets .status_code,
+    google-genai sets .code and embeds the status in the message), so check the
+    structured attributes first and fall back to the text."""
+    for attr in ("status_code", "code", "status"):
+        value = getattr(exc, attr, None)
+        if isinstance(value, int) and value in _PERMANENT_STATUS:
+            return True
+    text = str(exc)[:200]
+    return any(str(code) in text for code in _PERMANENT_STATUS)
+
+
 def with_retries(fn, *, attempts: int = 4, base_delay: float = 1.0, stage: str = ""):
     """Exponential backoff over transient provider failures (rate limits, 5xx).
-    A single flaky call should not lose a whole scoring run."""
+    A single flaky call should not lose a whole scoring run.
+
+    Permanent failures are raised immediately. Retrying a retired model name
+    four times per manual turns a clear configuration error into a slow one.
+    """
     last: Exception | None = None
     for attempt in range(attempts):
         try:
             return fn()
         except Exception as exc:  # provider SDKs raise their own types
             last = exc
+            if is_permanent(exc):
+                log.error("provider call failed permanently, not retrying",
+                          extra={"stage": stage, "error": str(exc)[:300]})
+                raise ProviderError(f"provider rejected the call ({stage}): {exc}") from exc
             if attempt == attempts - 1:
                 break
             delay = base_delay * (2 ** attempt)
