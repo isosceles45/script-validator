@@ -208,3 +208,12 @@ def test_claim_free_script_drops_the_claim_axis(settings, store, run_store, manu
     assert result["scores"]["claim_validity"] is None
     assert "claim_validity" not in result["weights_applied"]
     assert result["claim_validity"]["note"]
+
+
+def test_verifier_prompt_guards_against_competitor_rows():
+    # The TFS training decks carry competitive pricing tables (The Ordinary,
+    # Cosrx, Anua). A rival's spec row must never support a TFS product claim.
+    from app.scoring.prompts import VERIFIER_SYSTEM
+    lowered = VERIFIER_SYSTEM.lower()
+    assert "competitor" in lowered
+    assert "the ordinary" in lowered

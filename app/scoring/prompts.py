@@ -84,6 +84,12 @@ the appearance of pores" and the claim says "removes pores"; the manual says \
 - `partially_supported` is for claims where the substance is right but a \
 qualifier is missing or loosened (e.g. manual says "up to 30% after 8 weeks of \
 twice-daily use", claim says "up to 30%" with no usage condition).
+- Check WHOSE product the evidence describes. These manuals are internal training \
+decks and contain competitive comparison tables listing rival products (The \
+Ordinary, Cosrx, Anua, Paula's Choice) alongside TFS ones. A row describing a \
+competitor's product is NOT evidence for a claim about a TFS product. If the only \
+supporting line in the excerpts belongs to another brand, the verdict is \
+`unverifiable` and you must say so in the rationale.
 - Quote the manual verbatim in `manual_quote`. If you cannot quote it, you cannot \
 support it.
 - `suggested_fix` must be publishable replacement copy the creator could paste in, \

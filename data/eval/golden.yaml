@@ -1,0 +1,130 @@
+# Golden retrieval set for the TFS manual corpus.
+#
+# Each case is a claim phrased the way a CREATOR would write it in a script,
+# paired with the manual that actually settles it. Claims deliberately do not
+# reuse the manual's own wording -- otherwise the set would measure string
+# matching rather than retrieval.
+#
+# Relevance = (hit comes from `source_file`) AND (hit contains one of `keywords`).
+# Never chunk ids: ids change whenever chunking changes, which is exactly when
+# the benchmark most needs to stay valid.
+#
+# `product` mirrors what a script would name. Roughly a third of cases omit it,
+# because real scripts often do not name the SKU and retrieval has to cope.
+
+version: 1
+cases:
+  - id: g01
+    claim: the pore ampoule uses a salicylic acid BHA as its active ingredient
+    product: Tea Tree Pore Ampoule
+    source_file: Tea_Tree_Pore_Ampoule
+    keywords: ["IP-BHA", "Salicylic acid"]
+
+  - id: g02
+    claim: the niacinamide serum is a 10 percent strength formula in a 30ml bottle
+    product: Alltimate
+    # Two Alltimate decks legitimately document this SKU, so either counts.
+    source_file: Alltimate
+    keywords: ["Niacinamide 10%"]
+
+  - id: g03
+    claim: the peeling gel combines four different exfoliating acids
+    source_file: Alltimate_4Skus
+    keywords: ["AHA+BHA+PHA+LHA", "4 varieties of acid"]
+
+  - id: g04
+    claim: the outdoor sun cream is rated SPF 50+ PA++++ and is waterproof
+    product: Natural Sun Eco
+    source_file: Natural_Sun_Eco
+    keywords: ["SPF 50+", "PA++++"]
+
+  - id: g05
+    claim: one of the sunscreens is designed to shield skin from blue light and fine dust
+    source_file: Natural_Sun_Eco
+    keywords: ["blue light", "fine dust"]
+
+  - id: g06
+    claim: clinical testing showed brighter, clearer skin tone after two weeks of use
+    product: Vita Drop Sunquid
+    source_file: Vita_Drop_Sunquid
+    keywords: ["2 weeks", "Clinical"]
+
+  - id: g07
+    claim: it is formulated with 99 percent pure vitamin B3
+    product: Vitamin Brightening Serum
+    source_file: Vitamin_Brightening_Serum
+    keywords: ["99% pure vitamin", "Niacinamide"]
+
+  - id: g08
+    claim: the PDRN in this serum comes from salmon
+    product: Pdrn Hyalu 7 Serum
+    source_file: PDRN_Hyalu_7_serum
+    keywords: ["Salmon-derived PDRN", "PDRN"]
+
+  - id: g09
+    claim: the hyaluronic acid spheres are a fraction of the size of a pore so they sink in deeper
+    source_file: PDRN_Hyalu_7_serum
+    keywords: ["1/210", "Hyaluball"]
+
+  - id: g10
+    claim: red propolis has more antioxidant flavonoids than other kinds of propolis
+    product: Dr Belmeur Pro Retinol Serum
+    source_file: Dr_Belmeur_Pro-Retinol_Serum
+    keywords: ["Red propolis", "Flavonoids"]
+
+  - id: g11
+    claim: the pure vitamin ampoule contains 10 percent vitamin C for spot brightening
+    product: White Seed
+    source_file: White_Seed
+    keywords: ["10% vitamin C", "Ascorbic acid"]
+
+  - id: g12
+    claim: the lip sleeping mask packs in three or more different vitamins
+    product: Vitamin Lip Sleeping Mask
+    source_file: Vitamin_Lip_Sleeping_Mask
+    keywords: ["AA-2G", "3 Vitamin ingredients"]
+
+  - id: g13
+    claim: this lip balm is made without any wax
+    source_file: the_therapy_Vegan_multi_lipcerin
+    keywords: ["Wax-free"]
+
+  - id: g14
+    claim: the multi balm is moisturised with shea butter and plant-derived squalane
+    product: The Therapy Vegan Multi Lipcerin
+    source_file: the_therapy_Vegan_multi_lipcerin
+    keywords: ["Squalane", "Shea Butter"]
+
+  - id: g15
+    claim: the aloe foam cleanser is built on gentle amino acid derived cleansing agents
+    product: Jeju Aloe Fresh Soothing Foam Cleanser
+    source_file: Jeju_Aloe_Fresh_Soothing_Foam_Cleanser
+    keywords: ["amino acid"]
+
+  - id: g16
+    claim: the cleansing oil blends rice water extract with jojoba oil
+    source_file: Rice_Water_Bright_Cleansing_Line
+    keywords: ["jojoba oil"]
+
+  - id: g17
+    claim: the cleansing wipes are enriched with mango butter for extra nourishment
+    product: Rice Water Bright Cleansing Line
+    source_file: Rice_Water_Bright_Cleansing_Line
+    keywords: ["Mango Butter"]
+
+  - id: g18
+    claim: the cica ampoule is a 45ml bottle built around centella asiatica
+    product: Dr Belmeur Advanced Ampoule
+    source_file: Dr__Belmeur_Advanced
+    keywords: ["Madecassoside", "Centella Asiatica"]
+
+  - id: g19
+    claim: argireline works by blocking about half of the SNARE complex formation
+    source_file: Dr__Belmeur_Advanced
+    keywords: ["SNARE"]
+
+  - id: g20
+    claim: the at-home mask line includes a clay mask that targets pores and dead skin
+    product: At Home Aesthetics Mask
+    source_file: At_Home_Aesthetics_Mask
+    keywords: ["clay", "dead skin"]
