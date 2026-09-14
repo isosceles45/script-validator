@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TFS Script Validator</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6f4; --panel: #fff; --ink: #1a1a18; --muted: #6b6b66;
+    --line: #e2e2dd; --accent: #7b4b2a;
+    --ok: #2f7d46; --warn: #9a6b12; --bad: #b03030; --unk: #6b6b66;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#17171a; --panel:#202024; --ink:#ecece8; --muted:#9a9a94;
+            --line:#33333a; --accent:#d9a175; --ok:#5cbd7a; --warn:#d6a640;
+            --bad:#e07070; --unk:#9a9a94; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font);
+         line-height:1.55; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
+  header { display:flex; justify-content:space-between; align-items:baseline;
+           gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  h1 { font-size:20px; margin:0; letter-spacing:-0.01em; }
+  h1 span { color:var(--muted); font-weight:400; }
+  #health { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:18px; margin-bottom:16px; }
+  label { display:block; font-size:12px; font-weight:600; text-transform:uppercase;
+          letter-spacing:.05em; color:var(--muted); margin-bottom:6px; }
+  textarea, input {
+    width:100%; background:var(--bg); color:var(--ink); border:1px solid var(--line);
+    border-radius:7px; padding:10px 12px; font:14px/1.55 var(--font); resize:vertical; }
+  textarea:focus, input:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .row { display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-top:14px; }
+  .row > div { flex:1 1 180px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:7px;
+           padding:11px 22px; font:600 14px var(--font); cursor:pointer; }
+  button:disabled { opacity:.55; cursor:progress; }
+  .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+
+  .verdict { display:inline-block; padding:4px 12px; border-radius:999px;
+             font:600 12px var(--mono); letter-spacing:.04em; }
+  .v-approved { background:color-mix(in srgb, var(--ok) 18%, transparent); color:var(--ok); }
+  .v-edits { background:color-mix(in srgb, var(--warn) 18%, transparent); color:var(--warn); }
+  .v-revision, .v-blocking { background:color-mix(in srgb, var(--bad) 18%, transparent); color:var(--bad); }
+
+  .scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+            gap:12px; margin:16px 0 4px; }
+  .score { border:1px solid var(--line); border-radius:9px; padding:12px 14px; }
+  .score .n { font:700 27px/1.1 var(--font); font-variant-numeric:tabular-nums; }
+  .score .n small { font-size:14px; font-weight:400; color:var(--muted); }
+  .score .k { font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+              color:var(--muted); margin-bottom:4px; }
+  .bar { height:4px; background:var(--line); border-radius:3px; margin-top:8px; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:3px; }
+
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+       color:var(--muted); margin:0 0 12px; }
+  .claim { border-left:3px solid var(--unk); padding:10px 0 10px 14px; margin-bottom:14px; }
+  .claim.supported { border-color:var(--ok); }
+  .claim.partially_supported { border-color:var(--warn); }
+  .claim.contradicted { border-color:var(--bad); }
+  .claim .tag { font:600 10px var(--mono); letter-spacing:.06em; padding:2px 7px;
+                border-radius:4px; background:var(--bg); }
+  .claim.supported .tag { color:var(--ok); }
+  .claim.partially_supported .tag { color:var(--warn); }
+  .claim.contradicted .tag { color:var(--bad); }
+  .claim.unverifiable .tag { color:var(--unk); }
+  .claim .txt { font-weight:600; margin:6px 0; }
+  .claim .meta { font-size:13px; color:var(--muted); }
+  .claim blockquote { margin:8px 0 0; padding:8px 12px; background:var(--bg);
+                      border-radius:6px; font-size:13px; }
+  .claim .fix { color:var(--ok); }
+  .cite { font-family:var(--mono); font-size:11.5px; color:var(--muted); }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { text-align:left; padding:6px 10px 6px 0; border-bottom:1px solid var(--line); }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .feedback { white-space:pre-wrap; }
+  ol.actions { margin:10px 0 0; padding-left:20px; }
+  ol.actions li { margin-bottom:5px; }
+  .foot { font-family:var(--mono); font-size:11.5px; color:var(--muted);
+          border-top:1px solid var(--line); padding-top:10px; margin-top:6px; }
+  .err { color:var(--bad); }
+  details summary { cursor:pointer; font-size:13px; color:var(--muted); }
+  pre { overflow-x:auto; background:var(--bg); padding:12px; border-radius:7px;
+        font:12px/1.5 var(--mono); }
+  @media (max-width:720px) { .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TFS Creative Script Validator <span>— brief · message · claims</span></h1>
+    <div id="health">checking…</div>
+  </header>
+
+  <form class="panel" id="form">
+    <div class="grid2">
+      <div>
+        <label for="brief">Campaign brief</label>
+        <textarea id="brief" rows="11" required minlength="10"
+          placeholder="Objective, target audience, tone of voice, key message, mandatories, format…"></textarea>
+      </div>
+      <div>
+        <label for="script">Creator script</label>
+        <textarea id="script" rows="11" required minlength="10"
+          placeholder="The submitted script to validate…"></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="product">Product hint <span style="text-transform:none">(optional)</span></label>
+        <input id="product" list="products" placeholder="e.g. Tea Tree Pore Ampoule">
+        <datalist id="products"></datalist>
+      </div>
+      <div>
+        <label for="campaign">Campaign label <span style="text-transform:none">(optional)</span></label>
+        <input id="campaign" placeholder="e.g. q4-tiktok">
+      </div>
+      <div style="flex:0 0 auto">
+        <button id="go" type="submit">Validate script</button>
+      </div>
+    </div>
+    <p class="hint">The product hint biases retrieval toward one manual. It is a soft
+      filter — if it matches nothing, the full catalogue is searched anyway.</p>
+  </form>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+const scoreColor = (n) =>
+  n === null || n === undefined ? "var(--unk)" : n >= 8 ? "var(--ok)" : n >= 6 ? "var(--warn)" : "var(--bad)";
+
+const VERDICT_CLASS = {
+  approved: "v-approved", approved_with_edits: "v-edits",
+  needs_revision: "v-revision", needs_revision_blocking: "v-blocking",
+};
+
+async function loadHealth() {
+  try {
+    const h = await (await fetch("/health")).json();
+    $("health").textContent =
+      `${h.provider}/${h.llm_model} · ${h.corpus.n_manuals} manuals · ${h.corpus.n_chunks} chunks`;
+    if (h.status !== "ok") {
+      $("health").innerHTML += ` · <span class="err">${esc(h.reason)}</span>`;
+    }
+    const corpus = await (await fetch("/corpus")).json();
+    $("products").innerHTML = [...new Set(corpus.manuals.map(m => m.product))]
+      .map(p => `<option value="${esc(p)}">`).join("");
+  } catch {
+    $("health").innerHTML = '<span class="err">service unreachable</span>';
+  }
+}
+
+function scoreCard(key, label, value) {
+  const shown = value === null || value === undefined ? "n/a" : value;
+  const pct = value === null || value === undefined ? 0 : value * 10;
+  return `<div class="score">
+    <div class="k">${label}</div>
+    <div class="n">${shown}${value === null || value === undefined ? "" : "<small>/10</small>"}</div>
+    <div class="bar"><i style="width:${pct}%;background:${scoreColor(value)}"></i></div>
+  </div>`;
+}
+
+function claimBlock(c) {
+  const parts = [`<div class="claim ${esc(c.verdict)}">
+    <span class="tag">${esc(c.verdict.replace(/_/g, " ").toUpperCase())}</span>
+    <span class="cite"> ${esc(c.risk)} risk · ${esc(c.type)}</span>
+    <div class="txt">${esc(c.text)}</div>`];
+  if (c.rationale) parts.push(`<div class="meta">${esc(c.rationale)}</div>`);
+  if (c.citations?.length) parts.push(`<div class="cite">source: ${esc(c.citations.join(" ; "))}</div>`);
+  if (c.manual_quote) parts.push(`<blockquote>Manual: “${esc(c.manual_quote)}”</blockquote>`);
+  if (c.suggested_fix) parts.push(`<blockquote class="fix">Suggested: “${esc(c.suggested_fix)}”</blockquote>`);
+  return parts.join("") + "</div>";
+}
+
+function renderEval(ev) {
+  const g = ev.golden, l = ev.live;
+  const goldenRow = g.status === "ok"
+    ? `<tr><td>Golden set (retrieval health)</td>
+         <td>recall@${g.k} <b>${g.recall_at_k}</b> · MRR <b>${g.mrr}</b></td>
+         <td class="cite">${g.n_cases} of ${g.sampled_from} labelled cases sampled</td></tr>`
+    : `<tr><td>Golden set (retrieval health)</td><td class="err">${esc(g.status)}</td>
+         <td class="cite">${esc(g.note || "")}</td></tr>`;
+  const liveRow = `<tr><td>This script (grounding)</td>
+      <td>rate <b>${l.grounding_rate ?? "n/a"}</b></td>
+      <td class="cite">${l.grounded_claims}/${l.total_claims} claims retrieved evidence above similarity ${l.min_similarity}</td></tr>`;
+  return `<div class="panel"><h2>Retrieval evaluation</h2>
+    <table><tr><th>Metric</th><th>Value</th><th>Detail</th></tr>
+    ${goldenRow}${liveRow}</table>
+    <p class="hint">Two different questions: the golden set says whether retrieval is
+      healthy at all (stable benchmark, comparable across runs); the grounding rate says
+      whether <em>this</em> script's claims found evidence. A high benchmark with a low
+      grounding rate means the script talks about products the catalogue does not cover.</p>
+  </div>`;
+}
+
+function render(r) {
+  const s = r.scores, m = r.meta;
+  const claims = [...r.claim_validity.claims].sort((a, b) => {
+    const o = { contradicted: 0, partially_supported: 1, unverifiable: 2, supported: 3 };
+    return o[a.verdict] - o[b.verdict];
+  });
+  const t = r.claim_validity.tally;
+
+  $("out").innerHTML = `
+    <div class="panel">
+      <span class="verdict ${VERDICT_CLASS[r.verdict] || ""}">${esc(r.verdict.replace(/_/g, " "))}</span>
+      <div class="scores">
+        ${scoreCard("o", "Overall", s.overall)}
+        ${scoreCard("b", "Brief alignment", s.brief_alignment)}
+        ${scoreCard("m", "Message quality", s.message_quality)}
+        ${scoreCard("c", "Claim validity", s.claim_validity)}
+      </div>
+      ${s.claim_validity === null ? `<p class="hint">${esc(r.claim_validity.note)}</p>` : ""}
+    </div>
+
+    <div class="panel"><h2>Overall feedback</h2>
+      <div class="feedback">${esc(r.overall_feedback)}</div>
+      ${r.top_actions?.length ? `<ol class="actions">${r.top_actions.map(a => `<li>${esc(a)}</li>`).join("")}</ol>` : ""}
+    </div>
+
+    <div class="panel">
+      <h2>Product claims — ${t.total} checked ·
+        ${t.supported} supported · ${t.partially_supported} partial ·
+        ${t.contradicted} contradicted · ${t.unverifiable} unverifiable</h2>
+      ${claims.length ? claims.map(claimBlock).join("") : '<p class="hint">No checkable product claims in this script.</p>'}
+    </div>
+
+    ${renderEval(r.retrieval_eval)}
+
+    <div class="panel grid2" style="display:grid">
+      <div><h2>Brief alignment</h2>
+        <p>${esc(r.brief_alignment.justification)}</p>
+        <table>${Object.entries(r.brief_alignment.dimensions).map(([k, v]) =>
+          `<tr><td>${esc(k.replace(/_/g, " "))}</td><td><b>${v}</b></td></tr>`).join("")}</table>
+        ${r.brief_alignment.gaps?.length ? `<h2 style="margin-top:14px">Gaps</h2><ul>${r.brief_alignment.gaps.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
+      </div>
+      <div><h2>Message quality</h2>
+        <p>${esc(r.message_quality.justification)}</p>
+        <table>${Object.entries(r.message_quality.dimensions).map(([k, v]) =>
+          `<tr><td>${esc(k.replace(/_/g, " "))}</td><td><b>${v}</b></td></tr>`).join("")}</table>
+        ${r.message_quality.improvements?.length ? `<h2 style="margin-top:14px">Improvements</h2><ul>${r.message_quality.improvements.map(i => `<li>${esc(i.issue)}${i.rewrite ? ` — <em>“${esc(i.rewrite)}”</em>` : ""}</li>`).join("")}</ul>` : ""}
+      </div>
+    </div>
+
+    <div class="panel">
+      <details><summary>Run artifact (full JSON, including every retrieved chunk)</summary>
+        <pre>${esc(JSON.stringify(r, null, 2))}</pre></details>
+      <div class="foot">run ${esc(r.run_id)} · ${esc(m.provider)}/${esc(m.llm_model)} +
+        ${esc(m.embed_model)} · prompts ${esc(m.prompt_version)} · ${m.latency_ms}ms ·
+        ${m.total_tokens} tokens</div>
+    </div>`;
+}
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("go").disabled = true;
+  $("go").textContent = "Validating…";
+  $("out").innerHTML = '<div class="panel hint">Extracting claims, retrieving manual evidence, verifying…</div>';
+  try {
+    const res = await fetch("/score", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brief: $("brief").value, script: $("script").value,
+        product_hint: $("product").value || null,
+        campaign: $("campaign").value || null,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      $("out").innerHTML = `<div class="panel err">${esc(body.detail || body.error || res.statusText)}</div>`;
+    } else {
+      render(body);
+    }
+  } catch (err) {
+    $("out").innerHTML = `<div class="panel err">${esc(err.message)}</div>`;
+  } finally {
+    $("go").disabled = false;
+    $("go").textContent = "Validate script";
+  }
+});
+
+loadHealth();
+</script>
+</body>
+</html>
