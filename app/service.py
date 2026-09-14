@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from .config import Settings, get_settings
 from .providers import Embedder, LLM, get_embedder, get_llm
-from .store.run_store import RunStore
+from .store.run_store import build_run_store
 from .store.vector_store import VectorStore
 
 log = logging.getLogger(__name__)
@@ -18,9 +18,8 @@ def get_vector_store() -> VectorStore:
 
 
 @lru_cache
-def get_run_store() -> RunStore:
-    settings = get_settings()
-    return RunStore(settings.db_path, settings.runs_dir)
+def get_run_store():
+    return build_run_store(get_settings())
 
 
 def new_providers(settings: Settings | None = None) -> tuple[LLM, Embedder]:

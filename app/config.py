@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     w_claims: float = 0.45
 
     golden_sample_size: int = 8
+
+    # Run persistence. "local" = SQLite + disk (development). "cloud" = GCS for
+    # run artifacts + Firestore for the queryable index, because Cloud Run
+    # instances are ephemeral and concurrent: local disk would lose every run on
+    # cold start and split /metrics across instances.
+    runs_backend: str = "local"
+    gcp_project: str = ""
+    runs_bucket: str = ""
+    firestore_collection: str = "script_validator_runs"
     log_level: str = "INFO"
 
     @property

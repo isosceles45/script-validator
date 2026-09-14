@@ -1,0 +1,16 @@
+# The manual corpus is ~256MB of binary decks. It is an INPUT to ingestion, not
+# a runtime dependency -- the image ships the embedded vectors instead.
+data/manuals/
+data/runs/
+data/store_gemini.sqlite3
+
+.venv/
+.git/
+.github/
+.pytest_cache/
+__pycache__/
+*.pyc
+.env
+tests/
+samples/
+scratchpad/

@@ -125,3 +125,31 @@ def test_corpus_and_metrics_endpoints(client):
     corpus = http.get("/corpus").json()
     assert corpus["n_manuals"] == 1 and corpus["n_chunks"] > 0
     assert "trends" in http.get("/metrics").json()
+
+
+def test_run_store_factory_routes_by_backend(tmp_path):
+    from app.config import Settings
+    from app.store.run_store import RunStore, build_run_store
+
+    local = build_run_store(Settings(data_dir=tmp_path, db_path=tmp_path / "s.db",
+                                     runs_backend="local"))
+    assert isinstance(local, RunStore)
+    local.close()
+
+
+def test_unknown_backend_fails_at_startup_not_on_first_run(tmp_path):
+    from app.config import Settings
+    from app.store.run_store import build_run_store
+    with pytest.raises(ValueError, match="unknown RUNS_BACKEND"):
+        build_run_store(Settings(data_dir=tmp_path, runs_backend="s3"))
+
+
+def test_cloud_backend_without_a_bucket_is_rejected(tmp_path):
+    # Misconfiguration must surface at construction, not after a scoring run has
+    # already burned tokens and has nowhere to write its artifact.
+    from app.config import Settings
+    from app.store.run_store import build_run_store
+    with pytest.raises(Exception) as exc:
+        build_run_store(Settings(data_dir=tmp_path, runs_backend="cloud",
+                                 runs_bucket=""))
+    assert "RUNS_BUCKET" in str(exc.value) or "google" in str(exc.value).lower()

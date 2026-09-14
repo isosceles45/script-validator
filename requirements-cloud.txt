@@ -1,0 +1,4 @@
+# Installed only in the container. Kept out of requirements.txt so local
+# development and CI do not pull the GCP SDKs.
+google-cloud-storage>=2.18
+google-cloud-firestore>=2.19

@@ -119,6 +119,10 @@ curl -s localhost:8080/score -H 'Content-Type: application/json' -d '{
 | `GET /metrics` | Score drift, retrieval health, latency, cost per run |
 | `POST /eval/retrieval` | Full golden-set eval, independent of any one run |
 
+The build context excludes the 256MB manual corpus (`.dockerignore`) — the
+manuals are an *input* to ingestion, not a runtime dependency. Build context is
+~13MB.
+
 **MCP** (optional, `pip install "mcp>=1.2"`) — exposes `validate_script`,
 `list_products`, `retrieval_eval`, `service_health` over stdio:
 
@@ -128,15 +132,49 @@ curl -s localhost:8080/score -H 'Content-Type: application/json' -d '{
   "args": ["-m", "app.mcp_server"], "cwd": "/abs/path/script-validator"}}}
 ```
 
-## 5. Deploy
+## 5. Deploy to Cloud Run
 
-Container serves the API and runs the ingestion job, so the loader, chunker and
-embedder are identical at ingest time and query time.
+```bash
+gcloud config set project YOUR_PROJECT_ID
+make ingest                  # the corpus must exist before the image is built
+./deploy/cloudrun.sh
+```
+
+Builds remotely via Cloud Build, so **local Docker is not required**. The script
+enables the APIs, creates the runs bucket and Firestore database, stores the API
+key in Secret Manager, grants the runtime service account access, deploys, and
+smoke-tests `/health` before reporting success.
+
+One image serves the API and the frontend. Locally:
 
 ```bash
 docker compose run --rm ingest     # mirrors a Cloud Run Job
 docker compose up api              # mirrors a Cloud Run Service
 ```
+
+### How state is handled on Cloud Run
+
+Cloud Run instances are ephemeral and concurrent, which breaks two assumptions
+the local build makes.
+
+**The vector store is baked into the image.** It is read-only at query time --
+ingestion is a separate batch job -- so the built image carries the embedded
+corpus (~12MB) rather than reading it from a bucket or a database. Cold starts
+are instant, there is nothing to provision for retrieval, and the corpus version
+is pinned to the image version. Updating manuals means re-ingesting and
+redeploying, which is an accurate description of what changed: the service's
+knowledge is part of the artifact, not config it picks up later. The Docker build
+fails if the store is missing, because a service with an empty corpus deploys
+perfectly and marks every claim unverifiable.
+
+**Run storage moves to GCS + Firestore.** Full run artifacts go to
+`gs://<bucket>/runs/<run_id>.json`, the queryable index to Firestore, so `/runs`
+and `/metrics` work across instances. Both scale to zero, preserving the cost
+profile. `RUNS_BACKEND=local` keeps SQLite + disk for development; the scoring
+pipeline is identical either way.
+
+**The API key is a mounted secret**, never a plain env var -- env vars are
+readable by anyone with `run.services.get` on the project.
 
 ---
 

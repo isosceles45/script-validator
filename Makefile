@@ -1,4 +1,4 @@
-.PHONY: install test ingest serve eval score docker-build deploy
+.PHONY: install test ingest serve eval score docker-build docker-run deploy
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -20,6 +20,9 @@ score:
 
 docker-build:
 	docker build -t tfs-script-validator .
+
+docker-run: docker-build
+	docker run --rm -p 8080:8080 --env-file .env -e RUNS_BACKEND=local tfs-script-validator
 
 deploy:
 	./deploy/cloudrun.sh

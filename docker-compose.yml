@@ -1,20 +1,27 @@
 # Local parity with the deployed container. `docker compose run ingest` mirrors
 # the Cloud Run Job; `docker compose up api` mirrors the Cloud Run Service.
+#
+# Both override RUNS_BACKEND to local: the image defaults to cloud for Cloud Run,
+# and running locally should not require GCS credentials.
 services:
   api:
     build: .
     ports: ["8080:8080"]
     env_file: .env
     environment:
+      RUNS_BACKEND: local
       DATA_DIR: /data
       DB_PATH: /data/store.sqlite3
     volumes:
+      # Mounting ./data shadows the baked-in store with the local one, so local
+      # runs exercise whatever was last ingested rather than the image's snapshot.
       - ./data:/data
 
   ingest:
     build: .
     env_file: .env
     environment:
+      RUNS_BACKEND: local
       DATA_DIR: /data
       DB_PATH: /data/store.sqlite3
     volumes:

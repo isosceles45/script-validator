@@ -146,7 +146,7 @@ def score_script(*, brief: str, script: str, settings: Settings, llm: LLM,
         }
 
         if run_store is not None:
-            result["artifact_path"] = str(run_store.save(result))
+            result["artifact_path"] = run_store.save(result)
 
         log.info("scoring run complete",
                  extra={"verdict": verdict, "scores": scores,
