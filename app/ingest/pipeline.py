@@ -28,6 +28,7 @@ class IngestReport:
     needs_ocr: list[str] = field(default_factory=list)
     failed: list[dict[str, str]] = field(default_factory=list)
     total_chunks: int = 0
+    dropped_fragments: int = 0
     duration_s: float = 0.0
     embed_model: str = ""
 
@@ -39,6 +40,7 @@ class IngestReport:
             "needs_ocr": self.needs_ocr,
             "failed": self.failed,
             "total_chunks": self.total_chunks,
+            "dropped_fragments": self.dropped_fragments,
             "duration_s": round(self.duration_s, 2),
             "embed_model": self.embed_model,
         }
@@ -48,6 +50,9 @@ class IngestReport:
             f"ingested {len(self.ingested)} manual(s), {self.total_chunks} chunks "
             f"in {self.duration_s:.1f}s using {self.embed_model}",
         ]
+        if self.dropped_fragments:
+            lines.append(f"  dropped {self.dropped_fragments} sub-minimum fragments "
+                         f"(deck boilerplate: 'THE END', title slides)")
         if self.skipped_unchanged:
             lines.append(f"  unchanged (skipped): {len(self.skipped_unchanged)}")
         if self.needs_conversion:
@@ -104,9 +109,11 @@ def ingest(settings: Settings, embedder: Embedder, store: VectorStore, *,
 
             product = product_name_from_filename(path)
             blocks = load(path)
-            chunks: list[Chunk] = chunk_blocks(
+            chunks, dropped = chunk_blocks(
                 blocks, manual_id=manual_id, product=product, source_file=path.name,
-                max_tokens=settings.chunk_tokens, overlap=settings.chunk_overlap)
+                max_tokens=settings.chunk_tokens, overlap=settings.chunk_overlap,
+                min_chars=settings.min_chunk_chars)
+            report.dropped_fragments += dropped
 
             if not chunks:
                 # An image-only deck is a silent retrieval hole: the product looks
@@ -126,6 +133,7 @@ def ingest(settings: Settings, embedder: Embedder, store: VectorStore, *,
             report.ingested.append({"manual_id": manual_id, "product": product,
                                     "file": path.name, "n_blocks": len(blocks),
                                     "n_chunks": len(chunks),
+                                    "dropped_fragments": dropped,
                                     "embed_s": round(time.time() - t0, 2)})
             report.total_chunks += len(chunks)
             log.info("manual ingested",

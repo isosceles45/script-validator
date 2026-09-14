@@ -34,8 +34,8 @@ def test_heading_detection_rejects_sentences():
 
 def test_chunker_keeps_section_and_page_provenance():
     blocks = [Block(text="Apply two drops.", page=4, heading="Usage Instructions")]
-    chunks = chunk_blocks(blocks, manual_id="m1", product="Ampoule",
-                          source_file="m1.pptx", max_tokens=500)
+    chunks, _ = chunk_blocks(blocks, manual_id="m1", product="Ampoule",
+                             source_file="m1.pptx", max_tokens=500, min_chars=0)
     assert len(chunks) == 1
     assert chunks[0].section == "Usage Instructions"
     assert chunks[0].page == 4
@@ -46,22 +46,23 @@ def test_chunker_keeps_section_and_page_provenance():
 
 def test_chunker_splits_oversized_blocks_and_never_drops_text():
     body = " ".join(f"word{i}" for i in range(4000))
-    chunks = chunk_blocks([Block(text=body)], manual_id="m", product="P",
-                          source_file="f", max_tokens=100, overlap=0.15)
+    chunks, _ = chunk_blocks([Block(text=body)], manual_id="m", product="P",
+                             source_file="f", max_tokens=100, overlap=0.15)
     assert len(chunks) > 1
     assert "word0" in chunks[0].text
     assert "word3999" in chunks[-1].text
 
 
 def test_tables_stay_separate_from_prose():
-    blocks = [Block(text="Prose body.", heading="Overview"),
+    blocks = [Block(text="A lightweight daily serum for combination skin.",
+                    heading="Overview"),
               Block(text="Ingredient | Amount\nNiacinamide | 5%", kind="table",
                     heading="Overview")]
-    chunks = chunk_blocks(blocks, manual_id="m", product="P", source_file="f")
+    chunks, _ = chunk_blocks(blocks, manual_id="m", product="P", source_file="f")
     kinds = [c.kind for c in chunks]
     assert "table" in kinds and "prose" in kinds
     table_chunk = next(c for c in chunks if c.kind == "table")
-    assert "Prose body" not in table_chunk.text
+    assert "lightweight daily serum" not in table_chunk.text
 
 
 def test_ingest_is_idempotent_by_checksum(settings, store, manuals_dir):
@@ -99,7 +100,10 @@ def test_reingestion_replaces_stale_chunks(settings, store, manuals_dir):
     before = store.stats()["n_chunks"]
 
     target = manuals_dir / "TFS_Tea_Tree_Pore_Ampoule_202207.txt"
-    target.write_text("Product Overview\nShorter revised manual.\n", encoding="utf-8")
+    target.write_text(
+        "Product Overview\n"
+        "The reformulated ampoule is a lighter serum texture for daily use.\n",
+        encoding="utf-8")
     ingest(settings, embedder, store)
 
     after = store.stats()["n_chunks"]
@@ -108,3 +112,22 @@ def test_reingestion_replaces_stale_chunks(settings, store, manuals_dir):
                      store._conn.execute("SELECT text FROM chunks").fetchall())
     # A retired claim must not survive re-ingestion and stay "supported".
     assert "80% tea tree leaf water" not in texts
+
+
+def test_boilerplate_fragments_are_dropped_and_counted():
+    blocks = [Block(text="THE END"), Block(text="Thank you"),
+              Block(text="Contains 80% tea tree leaf water sourced from Jeju Island.")]
+    chunks, dropped = chunk_blocks(blocks, manual_id="m", product="P",
+                                   source_file="f", min_chars=40)
+    assert dropped == 2
+    assert len(chunks) == 1
+
+
+def test_short_body_under_a_real_heading_survives():
+    # The filter measures the chunk *with* its section heading attached, so a
+    # terse spec line under a meaningful section is kept.
+    blocks = [Block(text="5% niacinamide, 2% panthenol",
+                    heading="Active Ingredient Concentrations")]
+    chunks, dropped = chunk_blocks(blocks, manual_id="m", product="P",
+                                   source_file="f", min_chars=40)
+    assert dropped == 0 and len(chunks) == 1

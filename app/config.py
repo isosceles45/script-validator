@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     top_k: int = 5
     chunk_tokens: int = 500
     chunk_overlap: float = 0.15
+    min_chunk_chars: int = 40
     min_similarity: float = 0.25
 
     w_brief: float = 0.30

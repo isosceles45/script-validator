@@ -84,9 +84,12 @@ def _pack(paragraphs: list[str], max_tokens: int, overlap: float) -> list[str]:
 
 
 def chunk_blocks(blocks: Iterable[Block], *, manual_id: str, product: str,
-                 source_file: str, max_tokens: int = 500,
-                 overlap: float = 0.15) -> list[Chunk]:
+                 source_file: str, max_tokens: int = 500, overlap: float = 0.15,
+                 min_chars: int = 40) -> tuple[list[Chunk], int]:
+    """Returns (chunks, n_dropped). Dropped fragments are counted rather than
+    silently discarded so ingestion can report how much of a deck was noise."""
     chunks: list[Chunk] = []
+    dropped = 0
     for block in blocks:
         if not block.text.strip():
             continue
@@ -97,10 +100,19 @@ def chunk_blocks(blocks: Iterable[Block], *, manual_id: str, product: str,
         else:
             pieces = _pack(_split_paragraphs(block.text), max_tokens, overlap)
         for piece in pieces:
-            index = len(chunks)
             # Heading is prepended to the embedded text so section context is part
             # of the vector, not just metadata sitting beside it.
             body = f"{block.heading}\n{piece}" if block.heading else piece
+            # Slide decks are padded with "THE END", "Thank you" and title
+            # fragments. They carry no evidence, and because BM25 normalises by
+            # document length a tiny chunk matching one query term outranks the
+            # chunk that actually settles the claim. Measured after the heading is
+            # attached: a terse line under a real section ("Concentration / 5%
+            # niacinamide") is evidence, a bare title fragment is not.
+            if len(body.strip()) < min_chars:
+                dropped += 1
+                continue
+            index = len(chunks)
             chunks.append(Chunk(
                 chunk_id=f"{manual_id}:{index:04d}",
                 manual_id=manual_id,
@@ -111,4 +123,4 @@ def chunk_blocks(blocks: Iterable[Block], *, manual_id: str, product: str,
                 kind=block.kind,
                 text=body,
             ))
-    return chunks
+    return chunks, dropped
