@@ -34,6 +34,19 @@ command -v gcloud >/dev/null || die "gcloud not found. Install the Google Cloud 
 [[ -s data/store.sqlite3 ]] || die "data/store.sqlite3 is missing or empty. Run 'make ingest' first."
 [[ -s data/eval/golden.yaml ]] || die "data/eval/golden.yaml is missing -- retrieval eval would report no_golden_set on every run."
 
+# Existing on disk is not enough: `gcloud run deploy --source .` uploads what
+# .gcloudignore allows, and with no .gcloudignore it derives exclusions from
+# .gitignore -- which excludes the 12MB store. The build then fails deep in
+# Cloud Build with "file not found in build context", which reads like a
+# Dockerfile bug. Check the actual upload set instead.
+UPLOAD="$(gcloud meta list-files-for-upload . 2>/dev/null || true)"
+if [[ -n "$UPLOAD" ]]; then
+  grep -qx "data/store.sqlite3" <<<"$UPLOAD" \
+    || die "data/store.sqlite3 exists but is excluded from the source upload. Check .gcloudignore -- without that file gcloud falls back to .gitignore, which excludes it."
+  grep -qx "data/eval/golden.yaml" <<<"$UPLOAD" \
+    || die "data/eval/golden.yaml is excluded from the source upload. Check .gcloudignore."
+fi
+
 case "$PROVIDER" in
   openai) KEY="${OPENAI_API_KEY:-}" ; KEY_ENV="OPENAI_API_KEY" ;;
   gemini) KEY="${GOOGLE_API_KEY:-}" ; KEY_ENV="GOOGLE_API_KEY" ;;

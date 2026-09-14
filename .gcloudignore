@@ -1,0 +1,28 @@
+# Upload exclusions for `gcloud run deploy --source .`.
+#
+# This file MUST exist. Without it gcloud derives the upload set from
+# .gitignore, which excludes data/store.sqlite3 -- the embedded corpus the image
+# cannot be built without. The build then fails at COPY with "file not found in
+# build context", which reads like a Dockerfile bug rather than an upload one.
+#
+# Deliberately does NOT exclude data/store.sqlite3 or data/eval/golden.yaml.
+
+.git/
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# The manual corpus is an INPUT to ingestion (~256MB), not a runtime dependency.
+data/manuals/
+data/runs/
+data/store_gemini.sqlite3
+
+tests/
+samples/
+deploy/
+README.md
+Makefile
+docker-compose.yml
