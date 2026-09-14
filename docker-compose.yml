@@ -1,0 +1,22 @@
+# Local parity with the deployed container. `docker compose run ingest` mirrors
+# the Cloud Run Job; `docker compose up api` mirrors the Cloud Run Service.
+services:
+  api:
+    build: .
+    ports: ["8080:8080"]
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      DB_PATH: /data/store.sqlite3
+    volumes:
+      - ./data:/data
+
+  ingest:
+    build: .
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      DB_PATH: /data/store.sqlite3
+    volumes:
+      - ./data:/data
+    command: python -m app.cli ingest
