@@ -13,6 +13,25 @@ Output is a verdict (`approved` / `approved_with_edits` / `needs_revision` /
 `needs_revision_blocking`), per-claim verdicts with manual citations, a reviewer
 note, and the retrieval evaluation for that run.
 
+**Live:** https://tfs-script-validator-vfxzm7pp4q-el.a.run.app
+
+## Try it in two minutes
+
+Open the link above and run the same brief against two scripts:
+
+| Brief | Script | Expected |
+|---|---|---|
+| `samples/brief.md` | `samples/script_mixed.md` | `NEEDS_REVISION_BLOCKING` — acne claims flagged, `#PoreCheck` missing |
+| `samples/brief.md` | `samples/script_clean.md` | `APPROVED_WITH_EDITS` — 6 of 7 claims supported with manual citations |
+
+Set **Product hint** to `Tea Tree Pore Ampoule` for both. Same brief, opposite
+verdicts, and every difference traces to a specific claim with a source.
+
+Expand **Run artifact (full JSON)** at the bottom of a result to see every
+retrieved chunk, similarity score and citation behind the verdict.
+
+Cold start takes ~20s; subsequent runs land around 12-16s.
+
 ---
 
 ## 1. Setup
