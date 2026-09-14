@@ -33,8 +33,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-def configure_logging(level: str = "INFO") -> None:
-    handler = logging.StreamHandler(sys.stdout)
+def configure_logging(level: str = "INFO", stream=None) -> None:
+    """Defaults to stdout, which is what Cloud Logging scrapes. The MCP server
+    passes stderr instead: its stdio transport reserves stdout exclusively for
+    JSON-RPC frames, and a single log line written there kills the session."""
+    handler = logging.StreamHandler(stream or sys.stdout)
     handler.setFormatter(JsonFormatter())
     root = logging.getLogger()
     root.handlers[:] = [handler]

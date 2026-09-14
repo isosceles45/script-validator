@@ -12,12 +12,13 @@ Client config:
         "command": "/path/to/.venv/bin/python", "args": ["-m", "app.mcp_server"],
         "cwd": "/path/to/script-validator"}}}
 
-Requires the optional `mcp` package: pip install "mcp>=1.2"
+Requires the optional `mcp` package: pip install mcp
 """
 from __future__ import annotations
 
 import json
 import logging
+import sys
 
 from .config import get_settings
 from .evaluation import golden
@@ -29,15 +30,20 @@ log = logging.getLogger(__name__)
 
 
 def build_server():
+    # The SDK renamed FastMCP to MCPServer in 2.0; the decorator and run()
+    # surface are unchanged, so support both rather than pinning users to one.
     try:
-        from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:  # pragma: no cover - optional dependency
-        raise SystemExit(
-            "the MCP interface needs the `mcp` package: pip install 'mcp>=1.2'"
-        ) from exc
+        from mcp.server.mcpserver import MCPServer as _Server   # mcp >= 2.0
+    except ImportError:
+        try:
+            from mcp.server.fastmcp import FastMCP as _Server   # mcp 1.x
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise SystemExit(
+                "the MCP interface needs the `mcp` package: pip install mcp"
+            ) from exc
 
     settings = get_settings()
-    server = FastMCP("tfs-script-validator")
+    server = _Server("tfs-script-validator")
 
     @server.tool()
     def validate_script(brief: str, script: str, product_hint: str | None = None,
@@ -92,7 +98,8 @@ def build_server():
 
 
 def main() -> None:
-    configure_logging(get_settings().log_level)
+    # stderr, never stdout -- see configure_logging's docstring.
+    configure_logging(get_settings().log_level, stream=sys.stderr)
     build_server().run()
 
 
