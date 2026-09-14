@@ -1,0 +1,25 @@
+# --- core ---
+# Pins are lower bounds: the local dev box runs CPython 3.14, which needs recent
+# wheels (pydantic-core in particular). The container pins exact versions via
+# requirements.lock.txt.
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.12
+pydantic-settings>=2.7
+python-multipart>=0.0.20
+numpy>=2.1
+PyYAML>=6.0.2
+
+# --- document loading ---
+pypdf>=5.1
+pdfplumber>=0.11.4
+python-docx>=1.1.2
+python-pptx>=1.0.2
+
+# --- providers (both installed; selected at runtime via config) ---
+openai>=1.59
+google-genai>=1.0
+
+# --- dev ---
+pytest>=8.3
+httpx>=0.28
