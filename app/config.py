@@ -10,7 +10,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Bumped whenever a prompt template changes, so score drift is traceable per run.
-PROMPT_VERSION = "2026-09-15.1"
+PROMPT_VERSION = "2026-09-15.2"
 
 
 class Settings(BaseSettings):

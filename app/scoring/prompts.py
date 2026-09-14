@@ -23,6 +23,11 @@ NOT a claim (do not extract): emotional appeals, aesthetic description, narrativ
 setup, calls to action, greetings, or subjective taste ("I love this", "gorgeous \
 glow" as pure vibe, "hey besties").
 
+First-person framing does NOT make a statement uncheckable. "My pores look \
+smaller", "my skin feels smoother", "it cleared my breakouts" are efficacy \
+claims -- a testimonial is a regulated advertising claim, and the brand carries \
+the same burden of proof for it as for a flat assertion. Extract them.
+
 Rules:
 - Split compound sentences into ATOMIC claims. "Contains 5% niacinamide and fades \
 dark spots in 2 weeks" is TWO claims.
@@ -30,8 +35,14 @@ dark spots in 2 weeks" is TWO claims.
 text -- these are the parts that get a script rejected.
 - Quote the source line from the script verbatim in `quote`.
 - Assign `risk` by consumer-harm and legal exposure, not by how bold it sounds:
-  high   = safety, medical/therapeutic effect, absolute superlatives ("cures", \
-"#1", "dermatologist proven", "100% natural", "safe for all skin types")
+  high   = safety, medical/therapeutic effect, absolute superlatives. This
+           explicitly includes ANY claim to treat, clear, heal or cure a skin
+           condition -- acne, breakouts, eczema, rosacea, dermatitis,
+           hyperpigmentation as a disorder -- whether or not the word "cure" is
+           used, and whether or not it is framed as personal experience.
+           "It cleared my acne in three days" is a high-risk therapeutic claim,
+           not a medium-risk timeframe claim. Also: "dermatologist proven",
+           "clinically proven", "#1", "100% natural", "safe for all skin types".
   medium = quantified efficacy, timeframes, ingredient concentrations, \
 comparative claims
   low    = general benefit language, texture/sensory, usage instructions."""
