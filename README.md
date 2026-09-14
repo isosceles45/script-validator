@@ -195,6 +195,16 @@ documentation gap is exactly how "cures acne" ships. A `contradicted` claim or a
 high-risk `unverifiable` claim forces `needs_revision_blocking` regardless of the
 weighted average.
 
+**Mandatories are settled in code where they are literal.** A brief's
+mandatories split in two: hashtags, product names and required phrases are
+settled by string search; "show the texture on camera" or "end with a clear CTA"
+need interpretation. An LLM call classifies each, code verifies the literal ones,
+and the scorer is handed verified facts rather than asked to look. This was not
+theoretical -- `gpt-4o-mini` reported "did not say the full product name" for a
+script whose opening line was "I want to talk about the TFS Tea Tree Pore
+Ampoule", costing 5 points. The scorer is also prevented in code from listing a
+mandatory the string check proved present, not just instructed not to.
+
 **No claims ⇒ claim axis is dropped, not scored 10.** Its weight is redistributed.
 Scoring 10 would reward avoiding claims; scoring 0 would punish emotional copy for
 being emotional.
@@ -252,6 +262,9 @@ rather than guessed at.
   sensitive to script length. Fine at 5–10 claims; a very long, mostly-accurate
   script could score below a vague one. Fix would be to keep high-risk penalties
   absolute and make medium/low proportional to claim count.
+- **It scores text, so camera-dependent mandatories cannot be verified.** A
+  brief asking to "show the texture on camera" is marked `[JUDGEMENT]` and the
+  scorer guesses from the script's wording. Nothing in a script can settle it.
 - **It is a reviewer's assistant, not an approver.** It checks what is checkable
   against the manuals; it does not know regional advertising law or what legal
   signed off on last quarter. Every verdict carries its source quote so a human

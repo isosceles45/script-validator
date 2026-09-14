@@ -16,6 +16,7 @@ from ..store.run_store import RunStore
 from ..store.vector_store import VectorStore
 from .aggregator import combine_scores, verdict_label, write_feedback
 from .claims import extract_claims
+from .mandatories import run as run_mandatory_check
 from .retriever import retrieve_for_claims
 from .rubric_scorers import score_brief_alignment, score_message_quality
 from .verifier import claim_validity_score, tally, verify_claims
@@ -51,9 +52,18 @@ def score_script(*, brief: str, script: str, settings: Settings, llm: LLM,
         # The two rubric scorers are independent of the whole claim chain, so they
         # run alongside it rather than after it -- roughly halves wall-clock.
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            brief_future = pool.submit(
-                timed, "brief_alignment",
-                lambda: score_brief_alignment(llm, brief=brief, script=script))
+            # The brief branch is now two serial calls (extract mandatories,
+            # verify them in code, then score). It still runs alongside the claim
+            # chain, which is the longer branch.
+            def brief_branch():
+                mandatories, rendered = timed(
+                    "mandatory_check",
+                    lambda: run_mandatory_check(llm, brief=brief, script=script))
+                return timed("brief_alignment", lambda: score_brief_alignment(
+                    llm, brief=brief, script=script,
+                    mandatory_check=rendered, mandatories=mandatories))
+
+            brief_future = pool.submit(brief_branch)
             message_future = pool.submit(
                 timed, "message_quality",
                 lambda: score_message_quality(llm, brief=brief, script=script))

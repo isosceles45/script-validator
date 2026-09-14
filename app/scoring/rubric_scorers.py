@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from ..providers import LLM
+from .mandatories import Mandatory, normalize
 from .prompts import (BRIEF_ALIGNMENT_SCHEMA, BRIEF_ALIGNMENT_SYSTEM,
                       BRIEF_ALIGNMENT_USER, JSON_ONLY, MESSAGE_QUALITY_SCHEMA,
                       MESSAGE_QUALITY_SYSTEM, MESSAGE_QUALITY_USER)
@@ -31,14 +32,49 @@ def _clean_dimensions(raw: Any, expected: tuple[str, ...]) -> dict[str, float]:
 
 BRIEF_DIMENSIONS = ("objective", "audience", "tone_and_voice", "key_message",
                     "mandatories_and_format")
+
+
+def _drop_verified_present(missing: list[str], mandatories: list[Mandatory]) -> list[str]:
+    """Return the entries in `missing` that the string check proved present.
+    Matching is loose on both sides: the scorer paraphrases the requirement
+    rather than quoting it."""
+    present = [m for m in mandatories if m.kind == "literal" and m.present]
+    if not present:
+        return []
+    overruled = []
+    for claim in missing:
+        claim_norm = normalize(claim)
+        for mandatory in present:
+            token_norm = normalize(mandatory.matched_token or "")
+            text_norm = normalize(mandatory.text)
+            if (token_norm and token_norm in claim_norm) or (
+                    text_norm and _overlaps(text_norm, claim_norm)):
+                overruled.append(claim)
+                break
+    return overruled
+
+
+def _overlaps(a: str, b: str, threshold: float = 0.6) -> float:
+    """Jaccard overlap on content words -- "Full product name not stated at least
+    once" vs "say the full product name at least once"."""
+    stop = {"the", "a", "an", "at", "to", "of", "in", "is", "not", "be", "least",
+            "once", "must", "should", "and", "or", "it"}
+    wa = {w for w in a.split() if w not in stop}
+    wb = {w for w in b.split() if w not in stop}
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / len(wa | wb) >= threshold
 MESSAGE_DIMENSIONS = ("hook", "clarity", "structure_and_flow", "persuasiveness",
                       "call_to_action", "brand_voice_fit")
 
 
-def score_brief_alignment(llm: LLM, *, brief: str, script: str) -> dict[str, Any]:
+def score_brief_alignment(llm: LLM, *, brief: str, script: str,
+                          mandatory_check: str = "(not checked)",
+                          mandatories: list[Mandatory] | None = None) -> dict[str, Any]:
     raw = llm.json(
         system=BRIEF_ALIGNMENT_SYSTEM,
-        user=BRIEF_ALIGNMENT_USER.format(brief=brief, script=script),
+        user=BRIEF_ALIGNMENT_USER.format(brief=brief, script=script,
+                                         mandatory_check=mandatory_check),
         schema_hint=f"{BRIEF_ALIGNMENT_SCHEMA}\n\n{JSON_ONLY}",
         stage="brief_alignment",
     )
@@ -47,11 +83,23 @@ def score_brief_alignment(llm: LLM, *, brief: str, script: str) -> dict[str, Any
     # rather than silently defaulting a whole axis to 5.
     score = _clamp_score(raw.get("score"),
                          default=round(sum(dimensions.values()) / len(dimensions), 2))
+    missing = [str(x) for x in (raw.get("missing_mandatories") or [])]
+    overruled = _drop_verified_present(missing, mandatories or [])
+    if overruled:
+        # Belt and braces: the prompt forbids contradicting a [VERIFIED] PRESENT
+        # item, but a scorer that ignores the instruction must not be able to
+        # put a false miss in front of a creator.
+        log.warning("dropped mandatory misses contradicted by the verified check",
+                    extra={"overruled": overruled})
+        missing = [m for m in missing if m not in overruled]
+
     result = {
         "score": score,
         "justification": str(raw.get("justification") or "").strip(),
         "dimensions": dimensions,
-        "missing_mandatories": [str(x) for x in (raw.get("missing_mandatories") or [])],
+        "missing_mandatories": missing,
+        "mandatory_check": [m.as_dict() for m in (mandatories or [])],
+        "overruled_mandatory_misses": overruled,
         "strengths": [str(x) for x in (raw.get("strengths") or [])],
         "gaps": [str(x) for x in (raw.get("gaps") or [])],
     }

@@ -63,6 +63,11 @@ def default_responses(claims: list[dict[str, Any]] | None = None,
         "quote": "It contains tea tree leaf water.", "product": "Tea Tree Pore Ampoule",
         "type": "ingredient", "risk": "medium"}]
     return {
+        "mandatory_extraction": {"mandatories": [
+            {"text": "Include the hashtag #PoreCheck", "kind": "literal",
+             "tokens": ["#PoreCheck"]},
+            {"text": "Show the texture on camera", "kind": "judgement",
+             "tokens": []}]},
         "claim_extraction": {"product_mentions": ["Tea Tree Pore Ampoule"],
                              "claims": claims, "non_factual_lines": ["Hey besties!"]},
         "claim_verification": {

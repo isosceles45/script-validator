@@ -138,6 +138,12 @@ You are assessing FIT TO BRIEF only -- not whether the writing is good (that is 
 scored separately) and not whether the claims are true (also scored separately). \
 A beautifully written script that ignores the brief scores low here.
 
+The VERIFIED MANDATORY CHECK block is authoritative for every item marked \
+[VERIFIED]. Those were settled by exact string search against the script, not by \
+reading. Do NOT contradict them: if an item is marked PRESENT, it is present, \
+even if you did not notice it, and it must not appear in `missing_mandatories`. \
+Items marked [JUDGEMENT] are yours to assess normally.
+
 Score each dimension 1-10, where 5 means "partially delivers", 8+ means "delivers \
 with no notable gap", and below 4 means "misses". Be specific and quote the script \
 when you point at a gap -- an unattributed criticism is not actionable. If the \
@@ -154,6 +160,9 @@ CREATOR SCRIPT
 {script}
 ---
 
+VERIFIED MANDATORY CHECK
+{mandatory_check}
+
 Assess how well the script delivers the brief."""
 
 BRIEF_ALIGNMENT_SCHEMA = """Return exactly this shape:
@@ -167,6 +176,50 @@ BRIEF_ALIGNMENT_SCHEMA = """Return exactly this shape:
   "missing_mandatories": ["brief requirements absent from the script"],
   "strengths": ["specific things the script gets right"],
   "gaps": ["specific misses, each tied to what the brief asked for"]
+}"""
+
+
+# --------------------------------------------------------------------------
+# 3b. Mandatory extraction (feeds verified facts into brief alignment)
+# --------------------------------------------------------------------------
+
+MANDATORY_EXTRACTOR_SYSTEM = """You read a campaign brief and list its \
+MANDATORIES -- the things the script is required to contain or do.
+
+For each one decide whether it is LITERAL or JUDGEMENT.
+
+LITERAL means presence can be settled by searching the script text for an exact \
+string: a hashtag, a handle, a product or brand name, a required phrase, a URL, \
+a legal disclaimer. For these, put the exact string(s) to search for in `tokens`, \
+spelled as they would appear in the script. If the brief says "say the full \
+product name" and names the product elsewhere, the token is that product name.
+
+JUDGEMENT means presence requires interpretation and cannot be settled by string \
+search: "show the texture on camera", "keep it under 45 seconds", "end with a \
+clear CTA", "do not make medical claims". Leave `tokens` empty for these.
+
+When in doubt, choose JUDGEMENT -- a literal check that searches for the wrong \
+string reports a false miss, which is worse than deferring to interpretation.
+
+List only genuine requirements, not aspirations. "Tone should be honest" is not a \
+mandatory; "include the hashtag #PoreCheck" is."""
+
+MANDATORY_EXTRACTOR_USER = """CAMPAIGN BRIEF
+---
+{brief}
+---
+
+List the mandatories."""
+
+MANDATORY_EXTRACTOR_SCHEMA = """Return exactly this shape:
+{
+  "mandatories": [
+    {
+      "text": "the requirement, as stated in the brief",
+      "kind": "literal|judgement",
+      "tokens": ["exact string to find in the script"]
+    }
+  ]
 }"""
 
 # --------------------------------------------------------------------------
