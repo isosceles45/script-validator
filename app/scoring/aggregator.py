@@ -10,9 +10,18 @@ from .verifier import Verdict
 
 log = logging.getLogger(__name__)
 
-# A contradicted claim is a publication blocker regardless of how well the script
-# scores elsewhere, so the verdict label is capped independently of the average.
-BLOCKING_VERDICT = "contradicted"
+# Two conditions block publication regardless of how well a script scores
+# elsewhere, so the verdict label is capped independently of the weighted average:
+# a claim the manuals actively refute, and a high-risk claim (medical, safety,
+# absolute superlative) the manuals cannot substantiate. The second matters
+# because a manual is silent on almost every false medical claim ever written --
+# treating that silence as a minor gap is how "cures acne" ships.
+BLOCKING_VERDICTS = {"contradicted"}
+
+
+def is_blocking(verdict) -> bool:
+    return (verdict.verdict in BLOCKING_VERDICTS
+            or (verdict.verdict == "unverifiable" and verdict.claim.risk == "high"))
 
 
 def combine_scores(*, brief_score: float, message_score: float,
@@ -37,7 +46,7 @@ def combine_scores(*, brief_score: float, message_score: float,
 
 
 def verdict_label(overall: float, verdicts: list[Verdict]) -> str:
-    if any(v.verdict == BLOCKING_VERDICT for v in verdicts):
+    if any(is_blocking(v) for v in verdicts):
         return "needs_revision_blocking"
     if overall >= 8.0:
         return "approved"

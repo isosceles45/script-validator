@@ -23,12 +23,18 @@ log = logging.getLogger(__name__)
 VERDICTS = {"supported", "partially_supported", "contradicted", "unverifiable"}
 
 # Penalty applied to a starting score of 10, by verdict and claim risk.
-# A contradicted safety claim should be able to sink the score on its own;
-# an unverifiable low-risk claim is a documentation gap, barely a defect.
+#
+# The high-risk `unverifiable` cell is the one that matters most and the one
+# that is easiest to get wrong. "The manual is silent" is a mild documentation
+# gap for "contains mango butter" and a publication blocker for "dermatologist
+# proven to cure acne" -- because the real-world rule is that you cannot publish
+# a medical or safety claim you cannot evidence. Silence is not exoneration. It
+# sits just below an outright contradiction: still catastrophic, but a
+# contradiction is worse because the manual actively refutes it.
 PENALTY: dict[str, dict[str, float]] = {
     "contradicted":        {"high": 5.0, "medium": 3.0, "low": 1.5},
     "partially_supported": {"high": 1.2, "medium": 0.7, "low": 0.35},
-    "unverifiable":        {"high": 1.8, "medium": 0.9, "low": 0.4},
+    "unverifiable":        {"high": 4.0, "medium": 0.9, "low": 0.4},
     "supported":           {"high": 0.0, "medium": 0.0, "low": 0.0},
 }
 

@@ -217,3 +217,24 @@ def test_verifier_prompt_guards_against_competitor_rows():
     lowered = VERIFIER_SYSTEM.lower()
     assert "competitor" in lowered
     assert "the ordinary" in lowered
+
+
+def test_unsubstantiated_high_risk_claim_blocks_publication():
+    # "dermatologist proven to cure acne" -- the manual is silent, which is not
+    # exoneration. You cannot publish a medical claim you cannot evidence.
+    assert verdict_label(9.0, [_verdict("unverifiable", "high")]) == "needs_revision_blocking"
+
+
+def test_unverifiable_at_lower_risk_does_not_block():
+    # "contains mango butter" with a silent manual is a documentation gap, not a
+    # blocker -- otherwise every catalogue hole becomes a publication stop.
+    assert verdict_label(9.0, [_verdict("unverifiable", "medium")]) == "approved"
+    assert verdict_label(9.0, [_verdict("unverifiable", "low")]) == "approved"
+
+
+def test_high_risk_unverifiable_is_near_fatal_to_the_claim_score():
+    score = claim_validity_score([_verdict("unverifiable", "high")])
+    assert score == 6.0
+    # Still strictly better than an outright contradiction: the manual refuting a
+    # claim is worse than the manual being silent on it.
+    assert score > claim_validity_score([_verdict("contradicted", "high")])
